@@ -86,7 +86,7 @@ def competition(date, period, sort, results_per_page, universe):
     results_per_page = max(results_per_page, 10)
 
     return (
-        f"https://data.typeracer.com/pit/competitions?date={date_string}"
+        f"https://data.typeracer.com/pit/competitions/classic?date={date_string}"
         f"&sort={sort}&kind={period}&n={results_per_page}&universe={universe}"
     )
 
