@@ -273,7 +273,7 @@ def leaderboard_text_repeats():
         description += (
             f"{user_rank(leader, i)} - "
             f"{leader['text_repeat_times']:,} times - [Text #{leader['text_repeat_id']}]"
-            f"({urls.trdata_text_races(leader['username'], leader['text_repeat_times'])})\n"
+            f"({urls.trdata_text_races(leader['username'], leader['text_repeat_id'])})\n"
         )
 
     return description
