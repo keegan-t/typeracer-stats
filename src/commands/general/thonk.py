@@ -2,9 +2,9 @@ import random
 
 from discord import File
 from discord.ext import commands
+from thonk import generate_thonk
 
 from utils import embeds, strings, files
-from utils.thonk import generate_thonk
 
 command = {
     "name": "thonk",
@@ -37,8 +37,8 @@ def get_args(user, args, info):
 async def run(ctx, seed):
     if not seed:
         seed = str(random.randint(0, 1000000000))
-    file_name = f"thonk.png"
-    generate_thonk(file_name, seed)
+    file_name = "thonk.png"
+    generate_thonk(seed=seed, output_size=256).save(file_name)
 
     file = File(file_name, filename=file_name)
     await ctx.send(content=f"-# Seed: `{seed}`", file=file)
