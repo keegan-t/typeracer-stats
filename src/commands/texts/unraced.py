@@ -33,13 +33,18 @@ class Unraced(commands.Cog):
     async def unraced(self, ctx, *args):
         user = get_user(ctx)
 
+        _export = False
+        if args and args[-1] == "export":
+            args = args[:-1]
+            _export = True
+
         result = get_args(user, args, command)
         if is_embed(result):
             return await ctx.send(embed=result)
 
         username, category = result
-        if category == "export":
-            return await export(ctx, user, username)
+        if _export:
+            return await export(ctx, user, username, category)
 
         await run(ctx, user, username, category)
 
@@ -50,13 +55,21 @@ def get_args(user, args, info):
     return strings.parse_command(user, params, args, info)
 
 
-async def export(ctx, user, username):
+async def export(ctx, user, username, category):
     universe = user["universe"]
     stats = users.get_user(username, universe)
     if not stats:
         return await ctx.send(embed=errors.import_required(username, universe))
 
     unraced = users.get_unraced_texts(username, universe)
+
+    if category == "random":
+        random.shuffle(unraced)
+    elif category in ["short", "long"]:
+        unraced.sort(key=lambda x: len(x["quote"]), reverse=category == "long")
+    elif category in ["easy", "hard"]:
+        unraced.sort(key=lambda x: x["difficulty"], reverse=category == "hard")
+
     links = "\n".join(text["ghost"] for text in unraced)
     file_name = f"{username}_unraced.txt"
     with open(file_name, "w") as file:
