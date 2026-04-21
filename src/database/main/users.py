@@ -198,14 +198,16 @@ def get_most(column, limit):
     return top
 
 
-def get_best_wpm(limit):
-    top = db.fetch("""
+def get_best_wpm(limit, excluded_users):
+    placeholders = ",".join("?" * len(excluded_users))
+    top = db.fetch(f"""
         SELECT username, MAX(wpm_adjusted) as wpm FROM races
         WHERE universe = 'play'
+        AND username NOT IN ({placeholders})
         GROUP BY username
         ORDER BY MAX(wpm_adjusted) DESC
         LIMIT ?
-    """, [limit])
+    """, [*excluded_users, limit])
 
     return top
 
