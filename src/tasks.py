@@ -106,6 +106,11 @@ async def import_top_tens():
             text_id, score["user"], score["wpm"], score["wpm"],
             None, score["acc"], date_to_timestamp(score["t"]),
         ) for score in top_10]
+        banned = users.get_disqualified_users()
+        results = [r for r in results if r[1] not in banned]
+        if not results:
+            continue
+
         top_user = results[0][1]
         db_stats = users.get_user(top_user, "play")
         not_found = False
