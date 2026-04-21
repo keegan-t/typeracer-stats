@@ -203,7 +203,7 @@ def get_best_wpm(limit):
         SELECT username, MAX(wpm_adjusted) as wpm FROM races
         WHERE universe = 'play'
         GROUP BY username
-        ORDER BY wpm_adjusted DESC
+        ORDER BY MAX(wpm_adjusted) DESC
         LIMIT ?
     """, [limit])
 
