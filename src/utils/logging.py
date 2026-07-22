@@ -61,7 +61,7 @@ def log_error(command_message, error):
     if staging:
         return traceback.print_exception(type(error), error, error.__traceback__)
 
-    log_message = f"<@{bot_owner}>\n{command_message}\n"
+    log_message = f"{command_message}\n"
     error_traceback = traceback.format_exception(type(error), error, error.__traceback__)
     traceback_string = "".join([line for line in error_traceback])
 
