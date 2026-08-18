@@ -93,7 +93,7 @@ async def run(username=None, racer={}, ctx=None, bot_user=None, universe="play")
     if races_left > 0:
         await send_start(ctx, bot_user, username, races_left, universe)
 
-        recent_races = await get_recent_races(username, universe, start_time)
+        recent_races = discard_invalid_races(await get_recent_races(username, universe, start_time))
         if recent_races:
             cutoff = min(recent_races, key=lambda r: r["rn"])["rn"] - 1
             points_retroactive, total_time, characters = await process_races(
@@ -161,7 +161,7 @@ def extract_racer_data(stats):
 async def process_races(race_list, universe, username, imported_races, batch_size=1000):
     processor = RaceProcesser(universe)
     points_retroactive = total_time = characters = 0
-    race_list = sorted(race_list, key=lambda r: r["t"])
+    race_list = discard_invalid_races(race_list)
     seen = set(range(1, imported_races + 1))
 
     for i in range(0, len(race_list), batch_size):
@@ -195,6 +195,23 @@ async def process_races(race_list, universe, username, imported_races, batch_siz
         await asyncio.sleep(0.1)
 
     return points_retroactive, total_time, characters
+
+
+def discard_invalid_races(race_list):
+    """Reject races numbered by the API in the incorrect sequence."""
+    race_list = sorted(race_list, key=lambda r: r["t"])
+    valid_races = []
+    highest_number = 0
+
+    for race in race_list:
+        number = race["rn"]
+        if number < highest_number - 1000:
+            log(f"Skipping race {number} with invalid number (expected above {highest_number:,})")
+            continue
+        highest_number = max(highest_number, number)
+        valid_races.append(race)
+
+    return valid_races
 
 
 async def get_recent_races(username, universe, start_time):
