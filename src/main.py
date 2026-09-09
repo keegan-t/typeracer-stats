@@ -20,7 +20,10 @@ from tasks import import_competitions, update_important_users, update_top_tens, 
 from utils import errors, colors, dates
 from utils.logging import get_log_message, log, log_error
 
-bot = commands.Bot(command_prefix=prefix, case_insensitive=True, intents=discord.Intents.all())
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix=prefix, case_insensitive=True, intents=intents)
 bot.remove_command("help")
 bot.add_check(ban_check)
 
