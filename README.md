@@ -39,6 +39,21 @@ To view help about a specific command, run `-help [command]`.
 
 The bot is not currently available for invites to other Discord servers, however DM usage is open for all users.
 
+## Screenshots
+
+`-help` lists every available command.
+
+<img src="docs/screenshots/help.png" alt="The help command listing every available command" width="620">
+
+`-stats` and `-improvement` show a racer's statistics and their WPM over time.
+
+<img src="docs/screenshots/stats.png" alt="The stats command showing a racer's profile and statistics" width="440">
+<img src="docs/screenshots/improvement.png" alt="The improvement command showing a WPM graph over one million races" width="600">
+
+Commands take free-form arguments, such as a speed milestone or a pair of specific races.
+
+<img src="docs/screenshots/freeform-args.png" alt="The milestone and compareraces commands taking free-form arguments" width="600">
+
 ## Privacy
 Details on what data the bot stores and how to have it removed can be found in the [Privacy Policy](PRIVACY.md).
 
