@@ -1,7 +1,7 @@
 from discord import Embed
 from discord.ext import commands
 
-from config import bot_admins, supporters, bot_owner, bot_id
+from config import bot_admins, supporters, bot_owner, bot_id, privacy_policy
 from database.bot.users import get_user
 
 command = {
@@ -33,7 +33,8 @@ async def run(ctx, user):
         "providing a handful of new commands and features.\n[Click here]"
         "(https://keegan-t.github.io/TypeRacer-Stats-Changes/) to view a comprehensive list of changes.\n\n"
         f"Developed by <@{bot_owner}>, written in <:python_logo:1219588087383064647> Python.\n"
-        "<:github:1269454402415100015> [GitHub Repository](https://github.com/Keegan-T/TypeRacer-Stats)\n\n"
+        "<:github:1269454402415100015> [GitHub Repository](https://github.com/Keegan-T/TypeRacer-Stats)\n"
+        f"[Privacy Policy]({privacy_policy})\n\n"
         f"**Supporters** <:support:1220863071086575716>\n{supporter_list}\n\n"
         f"**Bot Admins**\n{admin_list}\n"
     )

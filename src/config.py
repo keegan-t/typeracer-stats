@@ -22,9 +22,11 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT_DIR / "src"
 
 prefix = "-"
+privacy_policy = "https://github.com/Keegan-T/TypeRacer-Stats/blob/main/PRIVACY.md"
 welcome_message = (
     f"### Welcome to TypeRacer Stats!\n"
     f"Run `{prefix}link YOUR_TYPERACER_USERNAME` to start using the bot\n"
+    f"By using the bot, you agree to its privacy policy: <{privacy_policy}>\n"
 )
 
 bot_owner = 155481579005804544

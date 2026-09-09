@@ -4,7 +4,7 @@ import os
 from discord import Embed
 from discord.ext import commands
 
-from config import prefix, bot_admins, bot_owner
+from config import prefix, bot_admins, bot_owner, privacy_policy
 from database.bot.users import get_user
 from utils import errors
 
@@ -42,7 +42,8 @@ async def help_main(ctx, user):
         description=f"`{prefix}help` - Displays this message\n"
                     f"`{prefix}help [command]` - Displays help for a specific command\n"
                     f"`[ ]` represents required parameters\n"
-                    f"`< >` represents optional parameters",
+                    f"`< >` represents optional parameters\n\n"
+                    f"[Privacy Policy]({privacy_policy})",
         color=user["colors"]["embed"],
     )
 
