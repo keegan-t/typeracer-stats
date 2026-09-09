@@ -39,6 +39,9 @@ To view help about a specific command, run `-help [command]`.
 
 The bot is not currently available for invites to other Discord servers, however DM usage is open for all users.
 
+## Privacy
+Details on what data the bot stores and how to have it removed can be found in the [Privacy Policy](PRIVACY.md).
+
 ## Creator
 The bot is created and maintained by Keegan Tournay.
 <br />
