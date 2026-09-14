@@ -41,43 +41,31 @@ async def get_races(
         columns = ",".join([c for c in columns])
     order = "DESC" if reverse else "ASC"
 
-    batch_size = 100_000
-    offset = 0
-
-    if limit:
-        limit_string = f"LIMIT {limit}"
-    else:
-        limit_string = f"LIMIT {batch_size} OFFSET {offset}"
+    limit_string = f"LIMIT {limit}" if limit else ""
+    index = (
+        "sqlite_autoindex_races_1" if start_number or end_number
+        else "idx_races_universe_username_timestamp"
+    )
 
     text_pool_string = (
         f"AND text_id IN ({",".join([str(tid) for tid in maintrack_text_pool])})"
         if text_pool != "all" and universe == "play" else ""
     )
 
-    race_list = []
-    while True:
-        batch_races = await db.fetch_async(f"""
-            SELECT {columns} FROM races
-            INDEXED BY idx_races_universe_username
-            WHERE universe = ?
-            AND username = ?
-            {text_pool_string}
-            {wpm_filter}
-            {f'AND number >= {start_number}' if start_number else ''}
-            {f'AND number <= {end_number}' if end_number else ''}
-            {f'AND timestamp >= {start_date}' if start_date else ''}
-            {f'AND timestamp < {end_date}' if end_date else ''}
-            {f'ORDER BY {order_by} {order}' if order_by else ''}
-            {limit_string}
-        """, [universe, username])
-
-        race_list += batch_races
-
-        if limit or not batch_races:
-            break
-
-        offset += batch_size
-        limit_string = f"LIMIT {batch_size} OFFSET {offset}"
+    race_list = await db.fetch_async(f"""
+        SELECT {columns} FROM races
+        INDEXED BY {index}
+        WHERE universe = ?
+        AND username = ?
+        {text_pool_string}
+        {wpm_filter}
+        {f'AND number >= {start_number}' if start_number else ''}
+        {f'AND number <= {end_number}' if end_number else ''}
+        {f'AND timestamp >= {start_date}' if start_date else ''}
+        {f'AND timestamp < {end_date}' if end_date else ''}
+        {f'ORDER BY {order_by} {order}' if order_by else ''}
+        {limit_string}
+    """, [universe, username])
 
     return race_list
 
@@ -145,7 +133,7 @@ def get_text_races(username, text_id, universe, start_date=None, end_date=None, 
 
     races = db.fetch(f"""
         SELECT username, number, text_id, {wpm} AS wpm, timestamp FROM races
-        INDEXED BY idx_races_universe_username_text_id
+        INDEXED BY idx_races_universe_username_text_id_wpm
         WHERE universe = ?
         AND username = ?
         AND text_id = ?

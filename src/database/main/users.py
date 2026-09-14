@@ -533,7 +533,7 @@ def get_unraced_texts(username, universe="play", text_pool="all"):
     user_texts = db.fetch(f"""
         SELECT DISTINCT(text_id)
         FROM races
-        INDEXED BY idx_races_universe_username_text_id
+        INDEXED BY idx_races_universe_username_text_id_wpm
         WHERE universe = ?
         AND username = ?
         {text_pool_string}
@@ -554,7 +554,7 @@ def count_races_over(username, threshold, category, over, universe, start_date=N
     times = db.fetch(f"""
         SELECT COUNT(*)
         FROM races
-        INDEXED BY idx_races_universe_username
+        INDEXED BY idx_races_universe_username_timestamp
         WHERE universe = ?
         AND username = ?
         {text_pool_string} 
@@ -568,7 +568,7 @@ def count_races_over(username, threshold, category, over, universe, start_date=N
 def get_texts_over(username, threshold, category, universe, start_date=None, end_date=None, text_pool="all"):
     threshold_string = f"HAVING TIMES >= {threshold}" * (category == "times")
     category_string = f"AND {category} >= {threshold}" * (category != "times")
-    index = f"INDEXED BY idx_races_universe_username" * (category == "points")
+    index = f"INDEXED BY idx_races_universe_username_timestamp" * (category == "points")
     text_pool_string = (
         f"AND text_id IN ({",".join([str(tid) for tid in maintrack_text_pool])})"
         if text_pool != "all" and universe == "play" else ""
@@ -616,14 +616,14 @@ def get_texts_under(username, threshold, category, universe, start_date=None, en
         texts = db.fetch(f"""
             SELECT text_id, COUNT(text_id) AS times
             FROM races
-            INDEXED BY idx_races_universe_username_text_id
+            INDEXED BY idx_races_universe_username_text_id_wpm
             WHERE universe = ?
             AND username = ?
             {get_date_query_string(start_date, end_date)}
             AND text_id IN (
                 SELECT text_id
                 FROM races
-                INDEXED BY idx_races_universe_username_text_id{'_wpm' * (category == 'wpm')}
+                INDEXED BY idx_races_universe_username_text_id_wpm
                 WHERE universe = ?
                 AND username = ?
                 {get_date_query_string(start_date, end_date)}
@@ -656,7 +656,7 @@ def get_milestone_number(username, milestone, category, universe, start_date=Non
         race = db.fetch(f"""
             SELECT number
             FROM races
-            INDEXED BY idx_races_universe_username
+            INDEXED BY idx_races_universe_username_timestamp
             WHERE universe = ?
             AND username = ?
             AND wpm_adjusted >= ?
@@ -672,7 +672,7 @@ def get_milestone_number(username, milestone, category, universe, start_date=Non
         races = db.fetch(f"""
             SELECT number, points
             FROM races
-            INDEXED BY idx_races_universe_username
+            INDEXED BY idx_races_universe_username_timestamp
             WHERE universe = ?
             AND username = ?
             {get_date_query_string(start_date, end_date)}
@@ -692,7 +692,7 @@ def get_milestone_number(username, milestone, category, universe, start_date=Non
         races = db.fetch(f"""
             SELECT number, text_id
             FROM races
-            INDEXED BY idx_races_universe_username
+            INDEXED BY idx_races_universe_username_timestamp
             WHERE universe = ?
             AND username = ?
             {get_date_query_string(start_date, end_date)}
