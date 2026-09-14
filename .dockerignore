@@ -1,0 +1,13 @@
+.git
+.idea
+.env
+venv
+assets
+docs
+**/__pycache__
+src/data
+src/xtra
+src/sandbox.py
+src/*.png
+src/*.txt
+typeracer_text_ids.txt

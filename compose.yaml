@@ -1,0 +1,17 @@
+services:
+  bot:
+    build: .
+    image: typeracer-stats
+    container_name: typeracer-stats
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./src/data:/app/src/data
+      - ./assets:/app/assets:ro
+    networks:
+      - edge
+
+# Shared with the cloudflared container, created once with `docker network create edge`
+networks:
+  edge:
+    external: true
