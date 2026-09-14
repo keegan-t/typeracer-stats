@@ -174,21 +174,30 @@ async def get_encounters(username1, username2, universe, wpm="wpm", text_pool="a
         if wpm in columns:
             wpm_filter = f"AND {wpm} IS NOT NULL"
 
-    races = db.fetch(f"""
-        SELECT {columns}
-        FROM races
-        WHERE race_id IN (
-            SELECT race_id
-            FROM races
+    def race_ids(username):
+        return db.fetch(f"""
+            SELECT race_id, number FROM races
+            INDEXED BY sqlite_autoindex_races_1
             WHERE universe = ?
-            AND username IN (?, ?)
-            {text_pool_string} 
+            AND username = ?
+            {text_pool_string}
             {wpm_filter}
-            GROUP BY race_id
-            HAVING COUNT(DISTINCT username) = 2
-        )
-        AND username IN (?, ?)
-    """, [universe, username1, username2, username1, username2])
+        """, [universe, username])
+
+    numbers2 = dict(race_ids(username2))
+    matches = [(number1, numbers2[race_id]) for race_id, number1 in race_ids(username1) if race_id in numbers2]
+
+    # SQLite caps bound parameters per statement
+    races = []
+    for username, numbers in ((username1, [m[0] for m in matches]), (username2, [m[1] for m in matches])):
+        for i in range(0, len(numbers), 500):
+            chunk = numbers[i:i + 500]
+            races += db.fetch(f"""
+                SELECT {columns} FROM races
+                WHERE universe = ?
+                AND username = ?
+                AND number IN ({",".join("?" * len(chunk))})
+            """, [universe, username, *chunk])
 
     encounters = defaultdict(list)
     for race in races:
