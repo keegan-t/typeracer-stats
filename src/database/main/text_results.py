@@ -9,22 +9,35 @@ from database.main import deleted_races, db
 from database.main.alts import get_alts
 from database.main.users import get_disqualified_users
 
+top_10s_cache = {}
+
 
 def add_results(results):
     db.run_many("""
         INSERT OR IGNORE INTO text_results
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, results)
+    top_10s_cache.clear()
 
 
 def get_count():
     return db.fetch("SELECT COUNT(DISTINCT text_id) FROM text_results")[0][0]
 
 
+# Every write to text_results must go through this module so the cache is cleared
 def get_top_10s():
-    results = db.fetch("SELECT * FROM text_results")
     alts = get_alts()
     banned = set(get_disqualified_users())
+    key = (frozenset(banned), frozenset((username, tuple(group)) for username, group in alts.items()))
+    if key not in top_10s_cache:
+        top_10s_cache.clear()
+        top_10s_cache[key] = calculate_top_10s(alts, banned)
+
+    return top_10s_cache[key]
+
+
+def calculate_top_10s(alts, banned):
+    results = db.fetch("SELECT * FROM text_results")
 
     top_10s = defaultdict(list)
     for result in results:
@@ -186,6 +199,7 @@ def delete_result(username, race_number):
         WHERE username = ?
         AND number = ?
     """, [username, race_number])
+    top_10s_cache.clear()
 
 
 def delete_results(text_id):
@@ -193,6 +207,7 @@ def delete_results(text_id):
         DELETE FROM text_results
         WHERE text_id = ?
     """, [text_id])
+    top_10s_cache.clear()
 
 
 def delete_user_results(username):
@@ -200,3 +215,4 @@ def delete_user_results(username):
         DELETE FROM text_results
         WHERE username = ?
     """, [username])
+    top_10s_cache.clear()

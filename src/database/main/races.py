@@ -214,8 +214,5 @@ async def delete_race(username, race_number, universe="play"):
     """, [universe, username, race_number])
 
     if universe == "play":
-        db.run("""
-            DELETE FROM text_results
-            WHERE username = ?
-            AND number = ?
-        """, [username, race_number])
+        from database.main.text_results import delete_result
+        delete_result(username, race_number)

@@ -463,7 +463,8 @@ async def delete_user(username, universe):
     """, [universe, username])
 
     if universe == "play":
-        db.run("DELETE FROM text_results WHERE username = ?", [username])
+        from database.main.text_results import delete_user_results
+        delete_user_results(username)
 
 
 def get_text_bests(username, race_stats=False, universe="play", until=None, wpm="wpm_adjusted", text_pool="all"):
