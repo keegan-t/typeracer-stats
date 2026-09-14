@@ -38,13 +38,15 @@ def get_text_stats(text_bests):
 
 def calculate_text_bests(race_list):
     tb_dict = {}
+    best_wpm = {}
     for race in race_list:
-        race = dict(race)
         text_id = race["text_id"]
-        if text_id not in tb_dict or race["wpm"] > tb_dict[text_id]["wpm"]:
+        wpm = race["wpm"]
+        if text_id not in best_wpm or wpm > best_wpm[text_id]:
+            best_wpm[text_id] = wpm
             tb_dict[text_id] = race
 
-    text_bests = sorted(tb_dict.values(), key=lambda x: x["wpm"], reverse=True)
+    text_bests = sorted((dict(race) for race in tb_dict.values()), key=lambda x: x["wpm"], reverse=True)
 
     return filter_disabled(text_bests)
 

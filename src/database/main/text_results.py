@@ -35,17 +35,17 @@ def get_top_10s():
         scores.sort(key=lambda x: x["wpm"], reverse=True)
 
         unique_scores = []
+        seen = set()
         for score in scores:
             username = score["username"]
             if username in banned:
                 continue
-            if username in alts:
-                existing_score = next((score for score in unique_scores if score["username"] in alts[username]), None)
-            else:
-                existing_score = next((score for score in unique_scores if score["username"] == username), None)
-
-            if not existing_score:
+            key = id(alts[username]) if username in alts else username
+            if key not in seen:
+                seen.add(key)
                 unique_scores.append(score)
+                if len(unique_scores) == 10:
+                    break
 
         filtered_top_10s[text_id] = unique_scores[:10]
 
