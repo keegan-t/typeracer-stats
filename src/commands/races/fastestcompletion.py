@@ -1,9 +1,11 @@
+import asyncio
+
 from discord import Embed
 from discord.ext import commands
 
 import database.main.races as races
 import database.main.users as users
-from commands.races.races import get_stats_fields
+from commands.races.races import get_stats_fields, get_stats_races
 from commands.locks import LargeQueryLock
 from database.bot.users import get_user
 from database.main import texts
@@ -74,55 +76,25 @@ async def run(ctx, user, username, number, category):
         text_list = texts.get_texts(universe=universe)
         text_lengths = {text["text_id"]: len(text["quote"]) for text in text_list}
 
-        columns = [
-            "text_id", "number", wpm_metric, "accuracy", "points", "characters", "rank", "racers",
-            "timestamp", "wpm_raw AS wpm_raw", "start_time", "total_time", "correction_time", "pause_time",
-        ]
+        columns = ["text_id", "number", wpm_metric, "points", "timestamp", "total_time"]
         race_list = await races.get_races(
             username, columns=columns, universe=universe,
             start_date=user["start_date"], end_date=user["end_date"],
             text_pool=text_pool,
         )
-        race_list.sort(key=lambda x: x["timestamp"])
-
-        windows = []
-        race_count = len(race_list)
 
         if category == "races":
             number = round(number)
-            for start_index in range(race_count - number + 1):
-                end_index = start_index + number
-                start_race = race_list[start_index]
-                start_time = get_start_time(start_race, text_lengths)
-                end_race = race_list[end_index - 1]
-                duration = end_race["timestamp"] - start_time
-                windows.append([start_index, end_index, duration])
-
-        else:
-            start_index = 0
-            total_points = 0
-            for end_index in range(race_count):
-                total_points += race_list[end_index]["points"]
-                while total_points >= number:
-                    start_race = race_list[start_index]
-                    start_time = get_start_time(start_race, text_lengths)
-                    end_time = race_list[end_index]["timestamp"]
-                    duration = end_time - start_time
-                    windows.append((start_index, end_index + 1, duration))
-                    total_points -= race_list[start_index]["points"]
-                    start_index += 1
-
-        if not windows:
+        top_windows = await asyncio.to_thread(get_top_windows, race_list, number, category, text_lengths)
+        if not top_windows:
             return await ctx.send(embed=errors.no_valid_windows(universe))
 
-        windows.sort(key=lambda x: x[2])
-        top_windows = get_top_disjoint_windows(windows, 10)
         fastest = top_windows[0]
-        race_range = race_list[fastest[0]:fastest[1]]
+        race_range = await get_stats_races(username, race_list[fastest[0]:fastest[1]], universe, wpm_metric)
         start_time = race_range[0]["timestamp"]
         end_time = race_range[-1]["timestamp"]
-        fields, footer = get_stats_fields(
-            username, race_range, start_time, end_time, universe,
+        fields, footer = await asyncio.to_thread(
+            get_stats_fields, username, race_range, start_time, end_time, universe,
             wpm_metric=wpm_metric, text_pool=text_pool,
         )
 
@@ -160,6 +132,39 @@ async def run(ctx, user, username, number, category):
     )
 
     await message.send()
+
+
+def get_top_windows(race_list, number, category, text_lengths):
+    race_list.sort(key=lambda x: x["timestamp"])
+    windows = []
+    race_count = len(race_list)
+
+    if category == "races":
+        for start_index in range(race_count - number + 1):
+            end_index = start_index + number
+            start_race = race_list[start_index]
+            start_time = get_start_time(start_race, text_lengths)
+            end_race = race_list[end_index - 1]
+            duration = end_race["timestamp"] - start_time
+            windows.append([start_index, end_index, duration])
+
+    else:
+        start_index = 0
+        total_points = 0
+        for end_index in range(race_count):
+            total_points += race_list[end_index]["points"]
+            while total_points >= number:
+                start_race = race_list[start_index]
+                start_time = get_start_time(start_race, text_lengths)
+                end_time = race_list[end_index]["timestamp"]
+                duration = end_time - start_time
+                windows.append((start_index, end_index + 1, duration))
+                total_points -= race_list[start_index]["points"]
+                start_index += 1
+
+    windows.sort(key=lambda x: x[2])
+
+    return get_top_disjoint_windows(windows, 10)
 
 
 def get_start_time(start_race, text_lengths):

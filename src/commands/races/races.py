@@ -203,6 +203,25 @@ async def run(ctx, user, username, start_date, end_date, start_number, end_numbe
     await message.send()
 
 
+def get_stats_columns(wpm_metric):
+    return [
+        "text_id", "number", wpm_metric, "accuracy", "points", "characters", "rank", "racers",
+        "timestamp", "wpm_raw AS wpm_raw", "start_time", "total_time", "correction_time", "pause_time",
+    ]
+
+
+async def get_stats_races(username, race_range, universe, wpm_metric):
+    numbers = {race["number"] for race in race_range}
+    race_list = await races.get_races(
+        username, get_stats_columns(wpm_metric), universe=universe,
+        start_number=min(numbers), end_number=max(numbers),
+    )
+    race_list = [race for race in race_list if race[1] in numbers]
+    race_list.sort(key=lambda x: x[8])
+
+    return race_list
+
+
 def get_stats_fields(username, race_list, start_time, end_time, universe="play", detailed=True, wpm_metric="wpm", text_pool="all"):
     fields = []
     footer = None

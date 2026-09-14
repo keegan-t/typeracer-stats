@@ -1,9 +1,11 @@
+import asyncio
+
 from discord.ext import commands
 
 import database.main.races as races
 import database.main.users as users
 from commands.races.fastestcompletion import get_start_time
-from commands.races.races import get_stats_fields
+from commands.races.races import get_stats_fields, get_stats_races
 from commands.locks import LargeQueryLock
 from database.bot.users import get_user
 from database.main import texts
@@ -66,10 +68,7 @@ async def run(ctx, user, username, category, seconds):
         text_list = texts.get_texts(universe=universe)
         text_lengths = {text["text_id"]: len(text["quote"]) for text in text_list}
 
-        columns = [
-            "text_id", "number", wpm_metric, "accuracy", "points", "characters", "rank", "racers",
-            "timestamp", "wpm_raw AS wpm_raw", "start_time", "total_time", "correction_time", "pause_time",
-        ]
+        columns = ["text_id", "number", wpm_metric, "timestamp", "total_time"]
         race_list = await races.get_races(
             username, columns=columns, universe=universe,
             start_date=user["start_date"], end_date=user["end_date"],
@@ -77,48 +76,15 @@ async def run(ctx, user, username, category, seconds):
         )
         if not race_list:
             return await ctx.send(embed=errors.no_races_in_range(universe), content=era_string)
-        race_list.sort(key=lambda x: x["timestamp"])
 
-        windows = []
-        start_index = 0
-
-        if category == "races":
-            current_session = 1
-            for i in range(1, len(race_list)):
-                start_time = get_start_time(race_list[i - 1], text_lengths)
-                time_difference = race_list[i]["timestamp"] - start_time
-                if time_difference < seconds:
-                    current_session += 1
-                else:
-                    end_index = i - 1
-                    windows.append((start_index, end_index, current_session))
-                    start_index = i
-                    current_session = 1
-
-        else:
-            current_session = 0
-            for i in range(1, len(race_list)):
-                start_time = get_start_time(race_list[i - 1], text_lengths)
-                time_difference = race_list[i]["timestamp"] - start_time
-                if time_difference < seconds:
-                    current_session += time_difference
-                else:
-                    end_index = i - 1
-                    windows.append((start_index, end_index, current_session))
-                    start_index = i
-                    current_session = 0
-
-        end_index = len(race_list) - 1
-        windows.append((start_index, end_index, current_session))
-        windows.sort(key=lambda x: -x[2])
-        top_windows = get_top_disjoint_windows(windows, 10)
+        top_windows = await asyncio.to_thread(get_top_windows, race_list, category, seconds, text_lengths)
 
         best = top_windows[0]
-        race_range = race_list[best[0]:best[1] + 1]
+        race_range = await get_stats_races(username, race_list[best[0]:best[1] + 1], universe, wpm_metric)
         start_time = get_start_time(race_range[0], text_lengths)
         end_time = race_range[-1]["timestamp"]
-        fields, footer = get_stats_fields(
-            username, race_range, start_time, end_time, universe,
+        fields, footer = await asyncio.to_thread(
+            get_stats_fields, username, race_range, start_time, end_time, universe,
             wpm_metric=wpm_metric, text_pool=text_pool,
         )
 
@@ -164,6 +130,44 @@ async def run(ctx, user, username, category, seconds):
     )
 
     await message.send()
+
+
+def get_top_windows(race_list, category, seconds, text_lengths):
+    race_list.sort(key=lambda x: x["timestamp"])
+    windows = []
+    start_index = 0
+
+    if category == "races":
+        current_session = 1
+        for i in range(1, len(race_list)):
+            start_time = get_start_time(race_list[i - 1], text_lengths)
+            time_difference = race_list[i]["timestamp"] - start_time
+            if time_difference < seconds:
+                current_session += 1
+            else:
+                end_index = i - 1
+                windows.append((start_index, end_index, current_session))
+                start_index = i
+                current_session = 1
+
+    else:
+        current_session = 0
+        for i in range(1, len(race_list)):
+            start_time = get_start_time(race_list[i - 1], text_lengths)
+            time_difference = race_list[i]["timestamp"] - start_time
+            if time_difference < seconds:
+                current_session += time_difference
+            else:
+                end_index = i - 1
+                windows.append((start_index, end_index, current_session))
+                start_index = i
+                current_session = 0
+
+    end_index = len(race_list) - 1
+    windows.append((start_index, end_index, current_session))
+    windows.sort(key=lambda x: -x[2])
+
+    return get_top_disjoint_windows(windows, 10)
 
 
 async def setup(bot):
