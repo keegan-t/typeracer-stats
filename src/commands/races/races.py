@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 
 import numpy as np
@@ -184,8 +185,8 @@ async def run(ctx, user, username, start_date, end_date, start_number, end_numbe
             return await ctx.send(embed=errors.no_races_in_range(universe), content=era_string)
         race_list.sort(key=lambda x: x["timestamp"])
 
-        fields, footer = get_stats_fields(
-            username, race_list, start, end, universe,
+        fields, footer = await asyncio.to_thread(
+            get_stats_fields, username, race_list, start, end, universe,
             wpm_metric=wpm_metric, text_pool=text_pool,
         )
 
@@ -226,7 +227,7 @@ def get_stats_fields(username, race_list, start_time, end_time, universe="play",
     total_wpm_gain = 0
     text_best_list = users.get_text_bests(username, universe=universe, until=race_list[0][8], wpm=wpm_metric, text_pool=text_pool)
     text_bests = {text_id: wpm for text_id, wpm in text_best_list}
-    disabled_text_ids = texts.get_disabled_text_ids()
+    disabled_text_ids = set(texts.get_disabled_text_ids())
     unique_texts = set()
     best_race = {}
     worst_race = {}
@@ -238,55 +239,53 @@ def get_stats_fields(username, race_list, start_time, end_time, universe="play",
     seconds_elapsed = last_race["timestamp"] - first_race["timestamp"]
     days = dates.count_unique_dates(start_time, end_time - 0.001)
     longest_break = {"time": 0, "start_number": {}}
-    standard_deviation = np.std([race["wpm"] for race in race_list])
+    standard_deviation = np.std([race[2] for race in race_list])
+    text_lengths = {}
 
-    previous_race = race_list[0]
+    previous_timestamp = race_list[0][8]
+    previous_number = race_list[0][1]
+    longest_break_time = 0
+    longest_break_number = previous_number
     for i, race in enumerate(race_list):
-        if race["racers"] > 1 and race["rank"] == 1:
+        (text_id, number, wpm, accuracy, race_points, _, rank, racers, timestamp,
+         wpm_raw, start, race_total_time, correction_time, pause_time) = race
+
+        if racers > 1 and rank == 1:
             wins += 1
 
-        points += race["points"]
-        wpm = race["wpm"]
+        points += race_points
         average_wpm["total"] += wpm
         average_wpm["count"] += 1
 
-        accuracy = race["accuracy"]
         if accuracy > 0:
             average_accuracy["total"] += accuracy
             average_accuracy["count"] += 1
 
-        wpm_raw = race["wpm_raw"]
         if wpm_raw:
             average_wpm_raw["total"] += wpm_raw
             average_wpm_raw["count"] += 1
-            average_correction["total"] += race["correction_time"] / race["total_time"]
+            average_correction["total"] += correction_time / race_total_time
             average_correction["count"] += 1
-            average_pause["total"] += race["pause_time"]
+            average_pause["total"] += pause_time
             average_pause["count"] += 1
-            start = race["start_time"]
             if start >= 10:
-                average_start["total"] += race["start_time"]
+                average_start["total"] += start
                 average_start["count"] += 1
 
-        text_id = race["text_id"]
-        text = text_list[text_id]
-        quote = text["quote"]
-
-        if "words" not in text:
-            text["words"] = len(quote.split(" "))
-        if "chars" not in text:
-            text["chars"] = len(quote)
-
-        words += text["words"]
-        characters += text["chars"]
+        lengths = text_lengths.get(text_id)
+        if lengths is None:
+            quote = text_list[text_id]["quote"]
+            lengths = text_lengths[text_id] = (len(quote.split(" ")), len(quote))
+        words += lengths[0]
+        characters += lengths[1]
 
         current_last_10 += wpm
         if i >= 9:
             if current_last_10 > best_last_10:
                 best_last_10 = current_last_10
-            current_last_10 -= race_list[i - 9]["wpm"]
+            current_last_10 -= race_list[i - 9][2]
 
-        total_time += race["total_time"]
+        total_time += race_total_time
         unique_texts.add(text_id)
 
         if wpm > best_race_wpm:
@@ -296,14 +295,13 @@ def get_stats_fields(username, race_list, start_time, end_time, universe="play",
             worst_race_wpm = wpm
             worst_race = race
 
-        break_time = race["timestamp"] - previous_race["timestamp"]
-        if break_time >= longest_break["time"]:
-            longest_break = {
-                "time": break_time,
-                "start_number": previous_race["number"],
-            }
+        break_time = timestamp - previous_timestamp
+        if break_time >= longest_break_time:
+            longest_break_time = break_time
+            longest_break_number = previous_number
 
-        previous_race = race
+        previous_timestamp = timestamp
+        previous_number = number
 
         if text_id in disabled_text_ids:
             continue
@@ -318,6 +316,8 @@ def get_stats_fields(username, race_list, start_time, end_time, universe="play",
             text_improvements += 1
             total_wpm_gain += wpm
             text_bests[text_id] = wpm
+
+    longest_break = {"time": longest_break_time, "start_number": longest_break_number}
 
     seconds = total_time / 1000
     average_string = (

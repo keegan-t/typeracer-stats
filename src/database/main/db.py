@@ -4,7 +4,7 @@ import aiosqlite
 
 file = "./data/main.db"
 
-reader = sqlite3.connect(file)
+reader = sqlite3.connect(file, check_same_thread=False)
 reader.row_factory = sqlite3.Row
 reader.execute("PRAGMA foreign_keys = ON")
 reader.execute("PRAGMA journal_mode = WAL")
