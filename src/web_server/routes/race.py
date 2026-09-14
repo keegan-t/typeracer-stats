@@ -132,6 +132,7 @@ def build_graph_data(segments):
         filtered_ticks.append(int(tick))
         if tick >= max_value:
             break
+    plt.close(fig)
 
     return {
         "segments": segments,
