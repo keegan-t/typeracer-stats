@@ -126,7 +126,7 @@ async def run(ctx, user, username, start_number, end_number, universe, raw=False
         stats["duration"] += race.get("total_time") or 0
         stats["accuracy"] += race.get("accuracy") or 0
 
-        if not race.get("start_time") or 0:
+        if not race.get("start_time") or not race.get("wpm_raw"):
             continue
 
         raw_unlagged = (multiplier * chars) / (race["start_time"] + (multiplier * (chars - 1) / race["wpm_raw"]))
