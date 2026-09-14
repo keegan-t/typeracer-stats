@@ -480,6 +480,33 @@ def get_text_bests(username, race_stats=False, universe="play", until=None, wpm=
     if wpm in ["wpm_raw", "wpm_pauseless"]:
         column_filter = f"AND {wpm} IS NOT NULL"
 
+    if race_stats and wpm in ["wpm_adjusted", "wpm_raw"]:
+        # CROSS JOIN pins the join order so races is searched per text best instead of scanned
+        text_bests = db.fetch(f"""
+            SELECT best.text_id, best.wpm AS wpm, MIN(races.number) AS number,
+                races.timestamp, races.accuracy, races.points, best.wpm AS wpm
+            FROM (
+                SELECT text_id, MAX({wpm}) AS wpm
+                FROM races
+                WHERE universe = ?
+                AND username = ?
+                {column_filter}
+                {timestamp_string}
+                {text_pool_string}
+                GROUP BY text_id
+            ) AS best
+            CROSS JOIN races
+            WHERE races.universe = ?
+            AND races.username = ?
+            AND races.text_id = best.text_id
+            AND races.{wpm} = best.wpm
+            {timestamp_string.replace("timestamp", "races.timestamp")}
+            GROUP BY best.text_id
+            ORDER BY best.wpm DESC
+        """, [universe, username, universe, username])
+
+        return filter_disabled(text_bests)
+
     text_bests = db.fetch(f"""
         SELECT {columns}, MAX({wpm}) AS wpm
         FROM races
