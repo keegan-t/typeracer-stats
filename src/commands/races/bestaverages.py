@@ -1,3 +1,4 @@
+from bisect import bisect_left
 from datetime import datetime, timezone
 
 from discord import Embed
@@ -86,17 +87,12 @@ async def run(ctx, user, username, n):
     page_count = 10
     per_page = min(10, len(averages) // 10 + 1)
 
+    picks = pick_best_averages(averages, n)
     for _ in range(page_count):
         description = ""
-        for _ in range(per_page):
-            best = max(averages)
-            if best == 0:
-                break
-            best_index = averages.index(best)
-            for i in range(-n + 1, n):
-                target_index = best_index + i
-                if 0 <= target_index < len(averages):
-                    averages[target_index] = 0
+        page_entries = 0
+        for best_index in picks:
+            best = averages[best_index]
 
             start_number = race_list[best_index][1]
             end_number = race_list[best_index + n - 1][1]
@@ -110,9 +106,12 @@ async def run(ctx, user, username, n):
                 f"**{date_range}**\n{best / n:,.2f} WPM: "
                 f"(Races {start_number:,} - {end_number:,})\n\n"
             )
-        pages.append(Page(description=description))
-        if sum(averages) == 0:
+            page_entries += 1
+            if page_entries == per_page:
+                break
+        if not description:
             break
+        pages.append(Page(description=description))
 
     title = f"Best Last {n:,} Averages"
 
@@ -128,6 +127,21 @@ async def run(ctx, user, username, n):
     )
 
     await message.send()
+
+
+def pick_best_averages(averages, n):
+    order = sorted(range(len(averages)), key=lambda i: -averages[i])
+    picked = []
+    for index in order:
+        if averages[index] == 0:
+            return
+        position = bisect_left(picked, index)
+        if position > 0 and index - picked[position - 1] < n:
+            continue
+        if position < len(picked) and picked[position] - index < n:
+            continue
+        picked.insert(position, index)
+        yield index
 
 
 def not_enough_races():
