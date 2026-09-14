@@ -6,6 +6,7 @@ from database.bot.users import get_user, update_colors
 from graphs import sample_graph
 from graphs.core import plt
 from utils import errors, colors, strings, files
+from utils.embeds import run_render
 
 elements = {
     "embed": "Embed",
@@ -122,7 +123,7 @@ async def run(ctx, user, element, color):
 
     update_colors(ctx.author.id, user["colors"])
 
-    file_name = sample_graph.render(user)
+    file_name = await run_render(sample_graph.render, user)
 
     file = File(file_name, filename=file_name)
     embed.set_image(url=f"attachment://{file_name}")
@@ -157,7 +158,7 @@ async def view(ctx, user):
 async def reset(ctx, user):
     user["colors"] = colors.default_colors
     update_colors(ctx.author.id, user["colors"])
-    file_name = sample_graph.render(user)
+    file_name = await run_render(sample_graph.render, user)
 
     embed = Embed(
         title=f"Colors Reset To Default",

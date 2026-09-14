@@ -6,6 +6,7 @@ from api.races import get_universe_multiplier
 from api.users import get_stats
 from commands.account.download import run as download
 from database.main import users, races, texts
+from utils.embeds import run_render
 from utils.stats import calculate_wpm
 from utils.strings import get_segments
 
@@ -65,7 +66,7 @@ async def race_page(request):
         multiplier = get_universe_multiplier(universe)
 
         segments = build_segment_stats(delays, raw_delays, race_info["quote"], multiplier)
-        graph_data = build_graph_data(segments)
+        graph_data = await run_render(build_graph_data, segments)
 
         data |= {
             "raw_unlagged": f"{race_info["raw_unlagged"]:,.2f}",

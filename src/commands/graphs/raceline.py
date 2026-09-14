@@ -215,7 +215,7 @@ async def run(ctx, user, usernames, column="number"):
 
     lines.sort(key=lambda x: x[3], reverse=True)
 
-    file_name = line_graph.render(user, lines, title, "Date", kind)
+    file_name = await embeds.run_render(line_graph.render, user, lines, title, "Date", kind)
 
     file = File(file_name, filename=file_name)
     await ctx.send(file=file, content=era_string)

@@ -1,9 +1,18 @@
+import asyncio
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 from discord import Embed, ButtonStyle, File
 from discord.ui import View, Button
 
 from utils import urls, strings, files
+
+# pyplot is not thread-safe, so every pyplot call goes through this one thread
+render_executor = ThreadPoolExecutor(max_workers=1)
+
+
+async def run_render(render, *args):
+    return await asyncio.get_running_loop().run_in_executor(render_executor, render, *args)
 
 
 class Page:
@@ -94,8 +103,6 @@ class Message(View):
                 self.update_footer(embed, f"Text Pool: {self.text_pool.title()}")
             self.embeds.append(embed)
 
-        if self.pages[self.index].render:
-            self.update_image()
         if self.page_count > 1:
             if self.paginated:
                 self.add_navigation_buttons()
@@ -197,13 +204,16 @@ class Message(View):
 
             self.index = index
             if self.pages[self.index].render:
-                self.update_image()
+                await self.update_image_async()
             self.clear_items()
             self.add_buttons()
 
             await self.update_embed(interaction)
 
         return callback
+
+    async def update_image_async(self):
+        await run_render(self.update_image)
 
     def update_image(self):
         index = self.index
@@ -231,6 +241,8 @@ class Message(View):
         await interaction.response.edit_message(**kwargs)
 
     async def send(self):
+        if self.pages[self.index].render:
+            await self.update_image_async()
         kwargs = {
             "embed": self.embeds[self.index],
             "view": self,
