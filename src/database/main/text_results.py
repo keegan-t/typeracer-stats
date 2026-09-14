@@ -24,7 +24,7 @@ def get_count():
 def get_top_10s():
     results = db.fetch("SELECT * FROM text_results")
     alts = get_alts()
-    banned = get_disqualified_users()
+    banned = set(get_disqualified_users())
 
     top_10s = defaultdict(list)
     for result in results:
@@ -78,7 +78,7 @@ def get_top_n(text_id, n=10, wpm="wpm_adjusted"):
 
     top_10 = []
     alts = get_alts()
-    banned = get_disqualified_users()
+    banned = set(get_disqualified_users())
 
     for result in results:
         username = result["username"]
@@ -164,7 +164,7 @@ async def update_results(text_id):
         for race in top_10_database
     ])
     exclusions = deleted_races.get_ids() | database_ids
-    banned_users = get_disqualified_users()
+    banned_users = set(get_disqualified_users())
     top_10_api = await texts_api.get_top_results(text_id)
     for score in top_10_api:
         username = score["user"]
