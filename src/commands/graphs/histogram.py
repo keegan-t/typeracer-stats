@@ -1,5 +1,5 @@
+import asyncio
 from collections import Counter
-from statistics import mode
 
 import numpy as np
 from discord.ext import commands
@@ -71,21 +71,17 @@ async def run(ctx, user, username, category):
     if len(race_list) == 0:
         return await ctx.send(embed=errors.no_races_in_range(universe), content=era_string)
 
-    wpm_values = [race[0] for race in race_list]
-    distribution_stats = get_distribution_stats(wpm_values, " WPM")
+    wpm_values, wpm_stats, accuracy_values, accuracy_stats = await asyncio.to_thread(get_race_values, race_list)
 
     wpm_page = Page(
         title="WPM Histogram",
-        description=distribution_stats,
+        description=wpm_stats,
         default=category == "wpm",
         button_name="WPM",
         render=lambda: histogram.render(
             user, username, wpm_values, "WPM", "WPM", "auto", universe
         ),
     )
-
-    accuracy_values = [int(race[1] * 100) for race in race_list if race[1] > 0]
-    accuracy_values_precise = [round(race[1] * 100, 1) for race in race_list if race[1] > 0]
 
     if not accuracy_values:
         accuracy_page = Page(
@@ -96,13 +92,12 @@ async def run(ctx, user, username, category):
             button_name="Accuracy",
         )
     else:
-        distribution_stats = get_distribution_stats(accuracy_values_precise, "%")
         values = np.array(accuracy_values)
         values = values[values >= 90]
         bins = np.arange(min(values), 102, 1)
         accuracy_page = Page(
             title="Accuracy Histogram",
-            description=distribution_stats,
+            description=accuracy_stats,
             default=category == "accuracy",
             button_name="Accuracy",
             render=lambda: histogram.render(
@@ -116,7 +111,7 @@ async def run(ctx, user, username, category):
     else:
         text_bests = users.get_text_bests(username, universe=universe, wpm=wpm_metric, text_pool=text_pool)
     text_best_values = [race[1] for race in text_bests]
-    distribution_stats = get_distribution_stats(text_best_values, " WPM")
+    distribution_stats = await asyncio.to_thread(get_distribution_stats, text_best_values, " WPM")
 
     text_bests_page = Page(
         title="Text Bests Histogram",
@@ -140,12 +135,24 @@ async def run(ctx, user, username, category):
     await message.send()
 
 
+def get_race_values(race_list):
+    wpm_values = [race[0] for race in race_list]
+    wpm_stats = get_distribution_stats(wpm_values, " WPM")
+
+    accuracy_values = [int(race[1] * 100) for race in race_list if race[1] > 0]
+    accuracy_stats = None
+    if accuracy_values:
+        accuracy_values_precise = [round(race[1] * 100, 1) for race in race_list if race[1] > 0]
+        accuracy_stats = get_distribution_stats(accuracy_values_precise, "%")
+
+    return wpm_values, wpm_stats, accuracy_values, accuracy_stats
+
+
 def get_distribution_stats(values, suffix):
     value_array = np.array(values)
-    mean = np.mean(values)
-    median = np.median(values)
-    mode_value = mode(values)
-    mode_frequency = Counter(values)[mode_value]
+    mean = np.mean(value_array)
+    median = np.median(value_array)
+    mode_value, mode_frequency = Counter(values).most_common(1)[0]
     std = np.std(value_array)
 
     return (
