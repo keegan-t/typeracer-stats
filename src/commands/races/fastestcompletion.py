@@ -172,7 +172,7 @@ def get_start_time(start_race, text_lengths):
     if race_time:
         start_time = start_race["timestamp"] - race_time
     else:
-        start_time = start_race["timestamp"] = (text_lengths[start_race["text_id"]] * 12) / start_race["wpm"]
+        start_time = start_race["timestamp"] - (text_lengths[start_race["text_id"]] * 12) / start_race["wpm"]
 
     return start_time
 
