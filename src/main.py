@@ -1,6 +1,7 @@
 import asyncio
 import glob
 import os
+import re
 
 import discord
 from aiohttp import ClientConnectionError, ClientResponseError
@@ -20,10 +21,31 @@ from tasks import import_competitions, update_important_users, update_top_tens, 
 from utils import errors, colors, dates
 from utils.logging import get_log_message, log, log_error
 
-intents = discord.Intents.default()
-intents.message_content = True
+def strip_bot_mentions(message):
+    mentions = [rf"<@!?{bot.user.id}>"]
+    if message.guild and message.guild.self_role:
+        mentions.append(rf"<@&{message.guild.self_role.id}>")
+    message.content = re.sub("|".join(mentions), "", message.content).strip()
 
-bot = commands.Bot(command_prefix=prefix, case_insensitive=True, intents=intents)
+
+def mentions_bot(message):
+    if bot.user in message.mentions:
+        return True
+    return bool(message.guild and message.guild.self_role in message.role_mentions)
+
+
+class Bot(commands.Bot):
+    # Strips before wait_for checks run, which see the message ahead of on_message
+    def dispatch(self, event_name, /, *args, **kwargs):
+        if event_name == "message" and self.user:
+            strip_bot_mentions(args[0])
+        super().dispatch(event_name, *args, **kwargs)
+
+
+# Without the message content intent, Discord only sends content for mentions, replies and DMs
+intents = discord.Intents.default()
+
+bot = Bot(command_prefix=prefix, case_insensitive=True, intents=intents)
 bot.remove_command("help")
 bot.add_check(ban_check)
 
@@ -90,6 +112,9 @@ async def on_message(message):
             return
     except:
         pass
+
+    if not message.content and not message.author.bot and mentions_bot(message):
+        return await message.reply(f"hi")
 
     if message.content.startswith(prefix) and not message.author.bot and not staging:
         log_message = get_log_message(message)
